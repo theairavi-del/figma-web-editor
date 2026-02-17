@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Figma-like Web Editor Demo</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- JSZip for ZIP file handling -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- FileSaver for downloading files -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+</head>
+<body>
+    <div class="app">
+        <!-- Top Toolbar -->
+        <header class="toolbar">
+            <div class="toolbar-left">
+                <div class="logo">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <circle cx="6" cy="6" r="3" fill="#F24E1E"/>
+                        <circle cx="18" cy="6" r="3" fill="#FF7262"/>
+                        <circle cx="6" cy="18" r="3" fill="#A259FF"/>
+                        <circle cx="18" cy="18" r="3" fill="#1ABCFE"/>
+                    </svg>
+                    <span>WebEditor</span>
+                </div>
+                <div class="toolbar-divider"></div>
+                <div class="tool-group">
+                    <button class="tool-btn active" data-tool="select" title="Select (V)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/>
+                        </svg>
+                    </button>
+                    <button class="tool-btn" data-tool="frame" title="Frame (F)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2"/>
+                        </svg>
+                    </button>
+                    <button class="tool-btn" data-tool="rectangle" title="Rectangle (R)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18"/>
+                        </svg>
+                    </button>
+                    <button class="tool-btn" data-tool="text" title="Text (T)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 7V4h16v3M9 20h6M12 4v16"/>
+                        </svg>
+                    </button>
+                    <button class="tool-btn" data-tool="image" title="Image">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2"/>
+                            <circle cx="8.5" cy="8.5" r="1.5"/>
+                            <path d="M21 15l-5-5L5 21"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="toolbar-center">
+                <span class="file-name">Untitled</span>
+                <span class="save-status">Saved</span>
+            </div>
+            <div class="toolbar-right">
+                <input type="file" id="zipInput" accept=".zip" style="display: none;">
+                <button class="action-btn" onclick="document.getElementById('zipInput').click()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+                    </svg>
+                    Import ZIP
+                </button>
+                <button class="action-btn primary" id="exportBtn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                    </svg>
+                    Export
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Left Sidebar -->
+            <aside class="sidebar left">
+                <div class="sidebar-tabs">
+                    <button class="tab-btn active" data-tab="layers">Layers</button>
+                    <button class="tab-btn" data-tab="assets">Assets</button>
+                    <button class="tab-btn" data-tab="pages">Pages</button>
+                </div>
+                
+                <!-- Layers Panel -->
+                <div class="panel active" id="layersPanel">
+                    <div class="panel-header">
+                        <span>Layers</span>
+                        <button class="icon-btn" id="addLayerBtn" title="Add Layer">+</button>
+                    </div>
+                    <div class="layers-tree" id="layersTree">
+                        <div class="layer-item selected" data-id="page">
+                            <span class="layer-icon">📄</span>
+                            <span class="layer-name">Page 1</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Assets Panel -->
+                <div class="panel" id="assetsPanel">
+                    <div class="panel-header">
+                        <span>Assets</span>
+                    </div>
+                    <div class="assets-grid" id="assetsGrid">
+                        <div class="asset-item" draggable="true">
+                            <div class="asset-preview" style="background: #6366f1;"></div>
+                            <span>Button Primary</span>
+                        </div>
+                        <div class="asset-item" draggable="true">
+                            <div class="asset-preview" style="background: #ec4899;"></div>
+                            <span>Card</span>
+                        </div>
+                        <div class="asset-item" draggable="true">
+                            <div class="asset-preview" style="background: #10b981;"></div>
+                            <span>Input</span>
+                        </div>
+                        <div class="asset-item" draggable="true">
+                            <div class="asset-preview" style="background: #f59e0b;"></div>
+                            <span>Avatar</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pages Panel -->
+                <div class="panel" id="pagesPanel">
+                    <div class="panel-header">
+                        <span>Pages</span>
+                        <button class="icon-btn" id="addPageBtn" title="Add Page">+</button>
+                    </div>
+                    <div class="pages-list" id="pagesList">
+                        <div class="page-item active">
+                            <span class="page-icon">📄</span>
+                            <span class="page-name">Page 1</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- File Structure Panel (shown when ZIP imported) -->
+                <div class="panel" id="filesPanel">
+                    <div class="panel-header">
+                        <span>Project Files</span>
+                    </div>
+                    <div class="files-tree" id="filesTree">
+                        <div class="file-placeholder">Import a ZIP to see files</div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Canvas Area -->
+            <main class="canvas-area">
+                <div class="canvas-container" id="canvasContainer">
+                    <div class="canvas-grid" id="canvas">
+                        <!-- Sample content -->
+                        <div class="canvas-element frame" id="frame1" style="left: 100px; top: 80px; width: 400px; height: 300px;">
+                            <div class="element-label">Frame 1</div>
+                            <div class="resize-handles">
+                                <div class="handle nw"></div>
+                                <div class="handle n"></div>
+                                <div class="handle ne"></div>
+                                <div class="handle w"></div>
+                                <div class="handle e"></div>
+                                <div class="handle sw"></div>
+                                <div class="handle s"></div>
+                                <div class="handle se"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="canvas-element text" id="text1" style="left: 130px; top: 120px;" contenteditable="true">
+                            Hello World
+                        </div>
+                        
+                        <div class="canvas-element rectangle" id="rect1" style="left: 130px; top: 170px; width: 150px; height: 40px; background: #6366f1;">
+                            <div class="resize-handles">
+                                <div class="handle nw"></div>
+                                <div class="handle n"></div>
+                                <div class="handle ne"></div>
+                                <div class="handle w"></div>
+                                <div class="handle e"></div>
+                                <div class="handle sw"></div>
+                                <div class="handle s"></div>
+                                <div class="handle se"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Zoom Controls -->
+                <div class="zoom-controls">
+                    <button class="zoom-btn" id="zoomOut">−</button>
+                    <span class="zoom-level" id="zoomLevel">100%</span>
+                    <button class="zoom-btn" id="zoomIn">+</button>
+                </div>
+            </main>
+
+            <!-- Right Sidebar - Properties -->
+            <aside class="sidebar right">
+                <div class="sidebar-header">
+                    <span>Properties</span>
+                </div>
+                
+                <div class="properties-panel" id="propertiesPanel">
+                    <!-- No selection state -->
+                    <div class="no-selection" id="noSelection">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                            <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                        </svg>
+                        <p>Select an element to edit its properties</p>
+                    </div>
+
+                    <!-- Selection properties -->
+                    <div class="properties-content" id="propertiesContent" style="display: none;">
+                        <!-- Transform Section -->
+                        <div class="property-section">
+                            <div class="section-header">
+                                <span>Transform</span>
+                                <button class="toggle-btn">−</button>
+                            </div>
+                            <div class="section-content">
+                                <div class="property-row">
+                                    <div class="property-field">
+                                        <label>X</label>
+                                        <input type="number" id="propX" value="0">
+                                    </div>
+                                    <div class="property-field">
+                                        <label>Y</label>
+                                        <input type="number" id="propY" value="0">
+                                    </div>
+                                </div>
+                                <div class="property-row">
+                                    <div class="property-field">
+                                        <label>W</label>
+                                        <input type="number" id="propW" value="100">
+                                    </div>
+                                    <div class="property-field">
+                                        <label>H</label>
+                                        <input type="number" id="propH" value="100">
+                                    </div>
+                                </div>
+                                <div class="property-row">
+                                    <div class="property-field">
+                                        <label>Rotation</label>
+                                        <input type="number" id="propRotation" value="0">
+                                    </div>
+                                    <div class="property-field">
+                                        <label>Opacity</label>
+                                        <input type="number" id="propOpacity" value="100" min="0" max="100">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Layout Section -->
+                        <div class="property-section">
+                            <div class="section-header">
+                                <span>Layout</span>
+                                <button class="toggle-btn">−</button>
+                            </div>
+                            <div class="section-content">
+                                <div class="property-row">
+                                    <label>Display</label>
+                                    <select id="propDisplay">
+                                        <option value="block">Block</option>
+                                        <option value="flex">Flex</option>
+                                        <option value="grid">Grid</option>
+                                        <option value="inline">Inline</option>
+                                        <option value="none">None</option>
+                                    </select>
+                                </div>
+                                <div class="property-row flex-props" style="display: none;">
+                                    <label>Direction</label>
+                                    <select id="propFlexDirection">
+                                        <option value="row">Row</option>
+                                        <option value="column">Column</option>
+                                    </select>
+                                </div>
+                                <div class="property-row flex-props" style="display: none;">
+                                    <label>Justify</label>
+                                    <select id="propJustify">
+                                        <option value="flex-start">Start</option>
+                                        <option value="center">Center</option>
+                                        <option value="flex-end">End</option>
+                                        <option value="space-between">Space Between</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Appearance Section -->
+                        <div class="property-section">
+                            <div class="section-header">
+                                <span>Appearance</span>
+                                <button class="toggle-btn">−</button>
+                            </div>
+                            <div class="section-content">
+                                <div class="property-row">
+                                    <label>Fill</label>
+                                    <div class="color-input">
+                                        <input type="color" id="propFill" value="#6366f1">
+                                        <input type="text" id="propFillText" value="#6366f1">
+                                    </div>
+                                </div>
+                                <div class="property-row">
+                                    <label>Stroke</label>
+                                    <div class="color-input">
+                                        <input type="color" id="propStroke" value="#000000">
+                                        <input type="text" id="propStrokeText" value="#000000">
+                                    </div>
+                                </div>
+                                <div class="property-row">
+                                    <div class="property-field">
+                                        <label>Stroke Width</label>
+                                        <input type="number" id="propStrokeWidth" value="0" min="0">
+                                    </div>
+                                    <div class="property-field">
+                                        <label>Radius</label>
+                                        <input type="number" id="propRadius" value="0" min="0">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Typography Section -->
+                        <div class="property-section" id="typographySection">
+                            <div class="section-header">
+                                <span>Typography</span>
+                                <button class="toggle-btn">−</button>
+                            </div>
+                            <div class="section-content">
+                                <div class="property-row">
+                                    <label>Font Family</label>
+                                    <select id="propFontFamily">
+                                        <option value="Inter">Inter</option>
+                                        <option value="Arial">Arial</option>
+                                        <option value="Helvetica">Helvetica</option>
+                                        <option value="Georgia">Georgia</option>
+                                        <option value="Times New Roman">Times New Roman</option>
+                                        <option value="monospace">Monospace</option>
+                                    </select>
+                                </div>
+                                <div class="property-row">
+                                    <div class="property-field">
+                                        <label>Size</label>
+                                        <input type="number" id="propFontSize" value="16">
+                                    </div>
+                                    <div class="property-field">
+                                        <label>Weight</label>
+                                        <select id="propFontWeight">
+                                            <option value="400">Regular</option>
+                                            <option value="500">Medium</option>
+                                            <option value="600">Semibold</option>
+                                            <option value="700">Bold</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="property-row">
+                                    <label>Color</label>
+                                    <div class="color-input">
+                                        <input type="color" id="propTextColor" value="#000000">
+                                        <input type="text" id="propTextColorText" value="#000000">
+                                    </div>
+                                </div>
+                                <div class="property-row">
+                                    <label>Align</label>
+                                    <div class="align-buttons">
+                                        <button class="align-btn active" data-align="left">⬅</button>
+                                        <button class="align-btn" data-align="center">↔</button>
+                                        <button class="align-btn" data-align="right">➡</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Effects Section -->
+                        <div class="property-section">
+                            <div class="section-header">
+                                <span>Effects</span>
+                                <button class="toggle-btn">−</button>
+                            </div>
+                            <div class="section-content">
+                                <div class="property-row">
+                                    <label>Shadow</label>
+                                    <input type="checkbox" id="propShadow" class="toggle-switch">
+                                </div>
+                                <div class="shadow-controls" style="display: none;">
+                                    <div class="property-row">
+                                        <div class="property-field">
+                                            <label>X</label>
+                                            <input type="number" id="shadowX" value="0">
+                                        </div>
+                                        <div class="property-field">
+                                            <label>Y</label>
+                                            <input type="number" id="shadowY" value="4">
+                                        </div>
+                                    </div>
+                                    <div class="property-row">
+                                        <div class="property-field">
+                                            <label>Blur</label>
+                                            <input type="number" id="shadowBlur" value="8">
+                                        </div>
+                                        <div class="property-field">
+                                            <label>Opacity</label>
+                                            <input type="number" id="shadowOpacity" value="20" min="0" max="100">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </div>
+
+        <!-- Status Bar -->
+        <footer class="status-bar">
+            <div class="status-left">
+                <span id="selectionInfo">No selection</span>
+            </div>
+            <div class="status-right">
+                <span id="canvasSize">800 × 600</span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Import Modal -->
+    <div class="modal" id="importModal" style="display: none;">
+        <div class="modal-content">
+            <h3>Import Project</h3>
+            <div class="drop-zone" id="dropZone">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="17,8 12,3 7,8"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                <p>Drag & drop a ZIP file here</p>
+                <p class="text-muted">or click to browse</p>
+            </div>
+            <div class="modal-actions">
+                <button class="btn secondary" id="cancelImport">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
